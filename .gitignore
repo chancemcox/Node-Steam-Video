@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+terraform/.env
+terraform/terraform.tfvars
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Videos (large files)
+video-server/videos/*.mp4
+video-server/videos/*.webm
+video-server/videos/*.ogg
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
