@@ -1,7 +1,5 @@
 'use client'
 
-const VIDEO_SERVER_URL = process.env.NEXT_PUBLIC_VIDEO_SERVER_URL || 'http://localhost:8080'
-
 interface Video {
   id: string
   name: string
@@ -15,7 +13,7 @@ interface VideoPlayerProps {
 }
 
 export default function VideoPlayer({ video }: VideoPlayerProps) {
-  const videoUrl = `${VIDEO_SERVER_URL}/api/video/${video.filename}`
+  const videoUrl = `/api/video/video/${video.filename}`
 
   return (
     <video

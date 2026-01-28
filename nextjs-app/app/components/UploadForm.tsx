@@ -1,10 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { checkAuth } from '../lib/auth'
-
-const VIDEO_SERVER_URL = process.env.NEXT_PUBLIC_VIDEO_SERVER_URL || 'http://localhost:8080'
 
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
@@ -52,7 +50,7 @@ export default function UploadForm() {
     formData.append('video', file)
 
     try {
-      const response = await axios.post(`${VIDEO_SERVER_URL}/api/upload`, formData, {
+      const response = await axios.post('/api/video/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

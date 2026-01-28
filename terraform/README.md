@@ -5,12 +5,11 @@ This directory contains Terraform configuration for deploying the video streamin
 ## Architecture
 
 - **ECS Cluster**: Fargate launch type (serverless containers)
-- **Services**: 
-  - `video-server`: Video streaming service (port 8080)
-  - `nextjs-app`: Next.js frontend application (port 3000)
-- **Load Balancer**: Application Load Balancer (ALB) for public access
-- **Container Registry**: Amazon ECR for Docker images
-- **Logging**: CloudWatch Logs
+- **Service**: 
+  - `video-streaming-app`: Combined service running both Next.js app (port 3000) and video server (port 8080) in a single container
+- **Load Balancer**: Application Load Balancer (ALB) for public access with two target groups
+- **Container Registry**: Amazon ECR for Docker images (single repository)
+- **Logging**: CloudWatch Logs (`/ecs/video-streaming-app`)
 - **Networking**: VPC with public subnets
 
 ## Quick Start
@@ -42,10 +41,10 @@ This directory contains Terraform configuration for deploying the video streamin
    terraform apply
    ```
 
-4. **Build and push Docker images**:
+4. **Build and push Docker image**:
    ```bash
    # From project root
-   ./scripts/build-and-push-images.sh
+   ./scripts/build-and-push-image.sh
    ```
 
 5. **Get application URLs**:
@@ -64,10 +63,11 @@ The `.env` file supports the following configuration:
 
 ## Resource Configuration
 
-- **CPU**: 256 (0.25 vCPU) per service
-- **Memory**: 512 MB per service
-- **Desired Count**: 1 task per service
+- **CPU**: 512 (0.5 vCPU) per task
+- **Memory**: 1024 MB per task
+- **Desired Count**: 1 task
 - **Launch Type**: Fargate (serverless)
+- **Container Ports**: 3000 (Next.js app) and 8080 (video server)
 
 ## Video Storage
 
@@ -84,29 +84,22 @@ After applying, Terraform will output:
 - `alb_dns_name`: Application Load Balancer DNS name
 - `nextjs_app_url`: URL to access the Next.js application
 - `video_server_url`: URL to access the video streaming server
-- `ecr_video_server_repository_url`: ECR repository URL for video server
-- `ecr_nextjs_app_repository_url`: ECR repository URL for Next.js app
+- `ecr_repository_url`: ECR repository URL for the combined Docker image
 
-## Updating Services
+## Updating Service
 
-To update a service with a new Docker image:
+To update the service with a new Docker image:
 
-1. Build and push new images:
+1. Build and push new image:
    ```bash
-   ./scripts/build-and-push-images.sh
+   ./scripts/build-and-push-image.sh
    ```
 
 2. Force a new deployment:
    ```bash
    aws ecs update-service \
      --cluster video-streaming-cluster \
-     --service video-server \
-     --force-new-deployment \
-     --profile ccox-mfa
-   
-   aws ecs update-service \
-     --cluster video-streaming-cluster \
-     --service nextjs-app \
+     --service video-streaming-app \
      --force-new-deployment \
      --profile ccox-mfa
    ```
@@ -116,11 +109,8 @@ To update a service with a new Docker image:
 View container logs in CloudWatch:
 
 ```bash
-# Video server logs
-aws logs tail /ecs/video-server --follow --profile ccox-mfa
-
-# Next.js app logs
-aws logs tail /ecs/nextjs-app --follow --profile ccox-mfa
+# Combined service logs (both Next.js app and video server)
+aws logs tail /ecs/video-streaming-app --follow --profile ccox-mfa
 ```
 
 ## Destroying Resources
@@ -138,4 +128,4 @@ export $(grep -v '^#' .env | xargs)
 terraform destroy
 ```
 
-**Note**: This will delete all ECR repositories and their images. Make sure you have backups if needed.
+**Note**: This will delete the ECR repository and all images. Make sure you have backups if needed.

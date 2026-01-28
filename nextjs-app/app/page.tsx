@@ -14,9 +14,15 @@ export default function Home() {
 
   useEffect(() => {
     const verifyAuth = async () => {
-      const authStatus = await checkAuth()
-      setIsAuthenticated(authStatus)
-      setLoading(false)
+      try {
+        const authStatus = await checkAuth()
+        setIsAuthenticated(authStatus)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        setIsAuthenticated(false)
+      } finally {
+        setLoading(false)
+      }
     }
     verifyAuth()
   }, [])

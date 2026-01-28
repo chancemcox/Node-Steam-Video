@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { login } from '../lib/auth'
+import { login, checkAuth } from '../lib/auth'
 
 interface LoginFormProps {
   onLogin: () => void
@@ -11,17 +11,27 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setLoading(true)
 
-    if (login(username, password)) {
-      onLogin()
-      setUsername('')
-      setPassword('')
-    } else {
-      setError('Invalid username or password')
+    try {
+      const success = await login(username, password)
+      if (success) {
+        setUsername('')
+        setPassword('')
+        // Reload page to ensure cookie is properly set and read
+        window.location.reload()
+      } else {
+        setError('Invalid username or password')
+        setLoading(false)
+      }
+    } catch (err) {
+      setError('Login failed. Please try again.')
+      setLoading(false)
     }
   }
 

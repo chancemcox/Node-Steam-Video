@@ -72,13 +72,13 @@
    terraform apply
    ```
 
-3. **Build and push Docker images**:
+3. **Build and push Docker image**:
    ```bash
    # From project root
-   ./scripts/build-and-push-images.sh
+   ./scripts/build-and-push-image.sh
    ```
    
-   This will build and push both Docker images to ECR. ECS will automatically deploy them.
+   This will build and push the combined Docker image (Next.js app + video server) to ECR. ECS will automatically deploy it.
 
 4. **Get application URLs**:
    ```bash
@@ -112,5 +112,5 @@
 - **Port conflicts**: Change ports in `docker-compose.yml`
 - **Video not loading**: Check ALB DNS name and target group health
 - **Upload fails**: Ensure logged in and file is under 500MB
-- **ECS service not starting**: Check CloudWatch logs: `aws logs tail /ecs/video-server --follow --profile ccox-mfa`
-- **Images not pushing**: Verify ECR repository URLs and AWS credentials
+- **ECS service not starting**: Check CloudWatch logs: `aws logs tail /ecs/video-streaming-app --follow --profile ccox-mfa`
+- **Images not pushing**: Verify ECR repository URL (`terraform output ecr_repository_url`) and AWS credentials

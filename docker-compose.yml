@@ -1,33 +1,20 @@
 version: '3.8'
 
 services:
-  video-server:
+  video-streaming-app:
     build:
-      context: ./video-server
-      dockerfile: Dockerfile
-    container_name: video-streaming-server
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./video-server/videos:/app/videos
-    environment:
-      - PORT=8080
-    restart: unless-stopped
-
-  nextjs-app:
-    build:
-      context: ./nextjs-app
+      context: .
       dockerfile: Dockerfile
     container_name: video-streaming-app
     ports:
       - "3000:3000"
+    volumes:
+      - ./video-server/videos:/app/video-server/videos
     environment:
-      - VIDEO_SERVER_URL=http://video-server:8080
-      - NEXT_PUBLIC_VIDEO_SERVER_URL=http://localhost:8080
+      - PORT=3000
+      - VIDEO_SERVER_PORT=8080
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-password123}
       - NEXT_PUBLIC_ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - NEXT_PUBLIC_ADMIN_PASSWORD=${ADMIN_PASSWORD:-password123}
-    depends_on:
-      - video-server
     restart: unless-stopped

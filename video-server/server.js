@@ -5,7 +5,7 @@ const cors = require('cors');
 const multer = require('multer');
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.VIDEO_SERVER_PORT || process.env.PORT || 8080;
 const VIDEOS_DIR = path.join(__dirname, 'videos');
 
 // Configure multer for file uploads

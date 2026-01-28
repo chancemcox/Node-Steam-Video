@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import VideoPlayer from './VideoPlayer'
 
-const VIDEO_SERVER_URL = process.env.NEXT_PUBLIC_VIDEO_SERVER_URL || 'http://localhost:8080'
-
 interface Video {
   id: string
   name: string
@@ -25,7 +23,7 @@ export default function VideoList() {
 
   const fetchVideos = async () => {
     try {
-      const response = await axios.get(`${VIDEO_SERVER_URL}/api/videos`)
+      const response = await axios.get('/api/video/videos')
       setVideos(response.data)
       setError('')
     } catch (err: any) {

@@ -100,15 +100,15 @@ A full-stack video streaming application with authentication, video upload, and 
    terraform apply
    ```
 
-3. **Build and push Docker images to ECR**
+3. **Build and push Docker image to ECR**
    ```bash
-   ./scripts/build-and-push-images.sh
+   ./scripts/build-and-push-image.sh
    ```
    
    This script will:
-   - Build Docker images for both services
-   - Push them to ECR repositories
-   - ECS will automatically deploy the new images
+   - Build the combined Docker image (Next.js app + video server)
+   - Push it to the ECR repository
+   - ECS will automatically deploy the new image
 
 4. **Access your application**
    ```bash
@@ -126,11 +126,11 @@ A full-stack video streaming application with authentication, video upload, and 
 
 ### Next.js App (.env.local)
 ```
-VIDEO_SERVER_URL=http://localhost:8080
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=password123
-NEXT_PUBLIC_VIDEO_SERVER_URL=http://localhost:8080
 ```
+
+**Note**: Since both services run in the same container, the video server URL is hardcoded to `http://localhost:8080` and doesn't need to be configured.
 
 ### Terraform (terraform/.env)
 ```bash
@@ -142,7 +142,7 @@ TF_VAR_admin_username=admin
 TF_VAR_admin_password=password123
 ```
 
-**Note**: Make sure your AWS profiles are configured in `~/.aws/credentials` or `~/.aws/config`. The ECS services use Fargate launch type with minimal resources (256 CPU, 512 MB memory).
+**Note**: Make sure your AWS profiles are configured in `~/.aws/credentials` or `~/.aws/config`. The ECS service uses Fargate launch type with 512 CPU (0.5 vCPU) and 1024 MB memory.
 
 ## Usage
 
@@ -178,16 +178,19 @@ TF_VAR_admin_password=password123
 ### Next.js App
 
 - `/` - Main page with video list
-- Login handled server-side with secure cookies
+- `POST /api/auth/login` - Authenticate user (returns secure cookie)
+- `POST /api/auth/logout` - Logout user (clears cookie)
+- `GET /api/auth/check` - Check authentication status
 
 ## ECS Architecture
 
 - **Cluster**: ECS Fargate cluster (serverless containers)
-- **Services**: Two ECS services (video-server and nextjs-app)
-- **Load Balancer**: Application Load Balancer (ALB) for public access
-- **Container Registry**: Amazon ECR for Docker images
-- **Logging**: CloudWatch Logs for container logs
+- **Service**: Single combined ECS service (`video-streaming-app`) running both Next.js app and video server in one container
+- **Load Balancer**: Application Load Balancer (ALB) for public access with two target groups (ports 3000 and 8080)
+- **Container Registry**: Amazon ECR for Docker images (single repository)
+- **Logging**: CloudWatch Logs for container logs (`/ecs/video-streaming-app`)
 - **Networking**: VPC with public subnets for Fargate tasks
+- **Resources**: 512 CPU (0.5 vCPU) and 1024 MB memory per task
 
 ### Important: Video Storage
 
@@ -239,7 +242,9 @@ See [terraform/README.md](terraform/README.md#video-storage) for more details.
 ├── docker-compose.yml            # Docker Compose for local development
 ├── scripts/                       # Setup and utility scripts
 │   ├── download-test-video.sh    # Download test video file
-│   └── build-and-push-images.sh  # Build and push Docker images to ECR
+│   ├── build-and-push-image.sh   # Build and push combined Docker image to ECR
+│   └── build-and-push-images.sh  # Legacy script (deprecated - use build-and-push-image.sh)
+├── Dockerfile                     # Combined Docker image for both services
 └── README.md                     # This file
 ```
 
@@ -255,42 +260,39 @@ See [terraform/README.md](terraform/README.md#video-storage) for more details.
 - **Upload fails**: 
   - Ensure you're logged in (check authentication cookie)
   - Verify file size is under 500MB
-  - Check CloudWatch logs: `aws logs tail /ecs/video-server --follow --profile ccox-mfa`
+  - Check CloudWatch logs: `aws logs tail /ecs/video-streaming-app --follow --profile ccox-mfa`
 
 - **ECS service not starting**: 
   - Check CloudWatch logs for container errors
-  - Verify task definition and container image URLs
+  - Verify task definition and container image URL
   - Check security group rules allow traffic from ALB
-  - Verify ECR images exist: `aws ecr describe-images --repository-name video-server --profile ccox-mfa`
+  - Verify ECR image exists: `aws ecr describe-images --repository-name video-streaming-app --profile ccox-mfa`
 
 - **Images not pushing**: 
-  - Verify ECR repository URLs: `terraform output ecr_video_server_repository_url`
+  - Verify ECR repository URL: `terraform output ecr_repository_url`
   - Check AWS credentials: `aws sts get-caller-identity --profile ccox-mfa`
   - Ensure Docker is running: `docker ps`
 
 - **ALB health checks failing**: 
-  - Verify containers are listening on correct ports (8080 for video-server, 3000 for nextjs-app)
-  - Check health check path: `/health` for video-server, `/` for nextjs-app
+  - Verify container is listening on both ports (8080 for video server, 3000 for Next.js app)
+  - Check health check paths: `/health` for video server target group, `/` for Next.js app target group
   - Review security group rules
 
 ### Viewing Logs
 
 ```bash
-# Video server logs
-aws logs tail /ecs/video-server --follow --profile ccox-mfa
-
-# Next.js app logs
-aws logs tail /ecs/nextjs-app --follow --profile ccox-mfa
+# Combined service logs (both Next.js app and video server)
+aws logs tail /ecs/video-streaming-app --follow --profile ccox-mfa
 ```
 
 ### Checking Service Status
 
 ```bash
 # List running tasks
-aws ecs list-tasks --cluster video-streaming-cluster --service-name video-server --profile ccox-mfa
+aws ecs list-tasks --cluster video-streaming-cluster --service-name video-streaming-app --profile ccox-mfa
 
 # Describe service
-aws ecs describe-services --cluster video-streaming-cluster --services video-server nextjs-app --profile ccox-mfa
+aws ecs describe-services --cluster video-streaming-cluster --services video-streaming-app --profile ccox-mfa
 ```
 
 ## Additional Documentation

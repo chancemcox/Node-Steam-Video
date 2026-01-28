@@ -71,31 +71,29 @@ Type `yes` when prompted. This will create all AWS resources.
 
 **Note**: This step may take 5-10 minutes.
 
-### 6. Build and Push Docker Images
+### 6. Build and Push Docker Image
 
 From the project root:
 
 ```bash
-./scripts/build-and-push-images.sh
+./scripts/build-and-push-image.sh
 ```
 
 This script will:
 1. Authenticate Docker with ECR
-2. Build the video-server image
-3. Push video-server to ECR
-4. Build the nextjs-app image
-5. Push nextjs-app to ECR
+2. Build the combined Docker image (Next.js app + video server)
+3. Push the image to ECR
 
-**Note**: First build may take several minutes. Subsequent builds will be faster due to Docker layer caching.
+**Note**: First build may take several minutes. Subsequent builds will be faster due to Docker layer caching. The script builds for `linux/amd64` platform which is required for ECS Fargate.
 
 ### 7. Verify Deployment
 
-Check ECS services are running:
+Check ECS service is running:
 
 ```bash
 aws ecs describe-services \
   --cluster video-streaming-cluster \
-  --services video-server nextjs-app \
+  --services video-streaming-app \
   --profile ccox-mfa \
   --query 'services[*].[serviceName,runningCount,desiredCount,status]' \
   --output table
@@ -119,24 +117,18 @@ terraform output video_server_url
 
 ## Updating the Application
 
-### Update Docker Images
+### Update Docker Image
 
 1. Make changes to your code
-2. Rebuild and push images:
+2. Rebuild and push image:
    ```bash
-   ./scripts/build-and-push-images.sh
+   ./scripts/build-and-push-image.sh
    ```
-3. Force ECS to deploy new images:
+3. Force ECS to deploy new image:
    ```bash
    aws ecs update-service \
      --cluster video-streaming-cluster \
-     --service video-server \
-     --force-new-deployment \
-     --profile ccox-mfa
-   
-   aws ecs update-service \
-     --cluster video-streaming-cluster \
-     --service nextjs-app \
+     --service video-streaming-app \
      --force-new-deployment \
      --profile ccox-mfa
    ```
@@ -185,18 +177,18 @@ aws ecs describe-tasks \
 
 Check target group health in AWS Console:
 - Navigate to EC2 → Target Groups
-- Select `video-server-tg` or `nextjs-app-tg`
+- Select `video-server-tg` (port 8080) or `nextjs-app-tg` (port 3000)
 - Check "Health checks" tab
 
 ## Scaling
 
-### Scale Services
+### Scale Service
 
 Update desired count in Terraform:
 
 ```hcl
 # In terraform/main.tf
-resource "aws_ecs_service" "video_server" {
+resource "aws_ecs_service" "app" {
   desired_count = 2  # Change from 1 to 2
   # ...
 }
@@ -211,7 +203,7 @@ Or use AWS CLI:
 ```bash
 aws ecs update-service \
   --cluster video-streaming-cluster \
-  --service video-server \
+  --service video-streaming-app \
   --desired-count 2 \
   --profile ccox-mfa
 ```
@@ -242,11 +234,11 @@ Make sure you have backups if needed!
 ## Cost Optimization
 
 - **Fargate Pricing**: ~$0.04/vCPU-hour + $0.004/GB-hour
-- Current setup: 2 services × (0.25 vCPU + 0.5 GB) = ~$0.05/hour = ~$36/month
+- Current setup: 1 service × (0.5 vCPU + 1 GB) = ~$0.024/hour = ~$17/month
 - **ALB**: ~$0.0225/hour = ~$16/month
 - **Data Transfer**: First 100 GB/month free, then $0.09/GB
 
-**Total estimated cost**: ~$50-60/month for minimal usage
+**Total estimated cost**: ~$35-40/month for minimal usage
 
 To reduce costs:
 - Use smaller instance sizes (already at minimum)

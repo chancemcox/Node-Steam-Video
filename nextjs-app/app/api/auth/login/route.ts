@@ -10,13 +10,18 @@ export async function POST(request: NextRequest) {
 
     if (username === adminUsername && password === adminPassword) {
       const cookieStore = await cookies()
-      cookieStore.set('video_app_auth', 'authenticated', {
+      const response = NextResponse.json({ success: true })
+      
+      // Set cookie on the response object
+      response.cookies.set('video_app_auth', 'authenticated', {
         maxAge: 60 * 60 * 24 * 7, // 7 days
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
+        sameSite: 'lax',
+        path: '/'
       })
-      return NextResponse.json({ success: true })
+      
+      return response
     }
 
     return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 })
